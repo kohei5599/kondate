@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="献立">
+<title>献立アプリ</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F8F7F4;
+  --bg2:#EFEDE8;
+  --bg3:#E5E2DB;
+  --text:#1C1A17;
+  --text2:#6B6760;
+  --border:#D8D4CC;
+  --border2:#C8C3BA;
+  --green:#1D9E75;
+  --green-bg:#E1F5EE;
+  --green-text:#0F6E56;
+  --radius:14px;
+  --radius-sm:8px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;min-height:100vh;-webkit-tap-highlight-color:transparent}
+.app{max-width:430px;margin:0 auto;padding:0 0 80px}
+
+/* ナビ */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;display:flex;background:rgba(248,247,244,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:0.5px solid var(--border);z-index:50}
+.nav button{flex:1;padding:12px 4px 16px;border:none;background:transparent;font-size:11px;color:var(--text2);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit}
+.nav button .icon{font-size:22px;line-height:1}
+.nav button.active{color:var(--green);font-weight:600}
+
+/* ヘッダー */
+.header{padding:16px 16px 0;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:rgba(248,247,244,0.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);z-index:40;border-bottom:0.5px solid var(--border)}
+.header h1{font-size:20px;font-weight:700;letter-spacing:-0.5px;padding-bottom:14px}
+.header-btn{padding:7px 14px;border:0.5px solid var(--border2);border-radius:20px;background:var(--bg2);font-size:13px;font-weight:500;cursor:pointer;color:var(--text);font-family:inherit;margin-bottom:14px}
+
+.screen{display:none;padding:12px 16px}.screen.active{display:block}
+
+/* フィルター */
+.filter-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:12px}
+.filter-scroll::-webkit-scrollbar{display:none}
+.filter-btn{flex-shrink:0;font-size:13px;padding:5px 13px;border:0.5px solid var(--border);border-radius:20px;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;white-space:nowrap}
+.filter-btn.active{background:var(--text);color:var(--bg);border-color:var(--text);font-weight:500}
+
+.sort-row{display:flex;gap:6px;margin-bottom:14px;align-items:center}
+.sort-row label{font-size:12px;color:var(--text2)}
+.sort-row select{font-size:13px;padding:5px 10px;border:0.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg2);color:var(--text);font-family:inherit}
+
+/* レシピカード */
+.card{background:#fff;border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;cursor:pointer;-webkit-user-select:none;user-select:none;active:opacity:.8}
+.card:active{opacity:.75}
+.card-title{font-size:16px;font-weight:600;margin-bottom:6px;letter-spacing:-0.3px}
+.card-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.badge{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:500}
+.badge.genre-和食{background:#EAF3DE;color:#3B6D11}
+.badge.genre-洋食{background:#E6F1FB;color:#185FA5}
+.badge.genre-中華{background:#FAECE7;color:#993C1D}
+.badge.genre-さっぱり{background:#E1F5EE;color:#0F6E56}
+.badge.genre-こってり{background:#FAEEDA;color:#854F0B}
+.badge.genre-サラダ{background:#EAF3DE;color:#3B6D11}
+.badge.genre-ドリンク{background:#FBEAF0;color:#993556}
+.badge.genre-来客用{background:#EEEDFE;color:#534AB7}
+.count-badge{font-size:12px;color:var(--text2)}
+.stars{font-size:15px;letter-spacing:-1px;color:#EF9F27}
+.star-empty{color:var(--border2)}
+
+/* モーダル */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--bg);border-radius:20px 20px 0 0;padding:20px 20px 40px;width:100%;max-width:430px;max-height:90vh;overflow-y:auto}
+.modal-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:16px;letter-spacing:-0.5px}
+.form-group{margin-bottom:14px}
+.form-group label{font-size:12px;color:var(--text2);display:block;margin-bottom:5px;font-weight:500}
+.form-group input,.form-group textarea{width:100%;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--radius-sm);font-size:15px;background:#fff;color:var(--text);font-family:inherit;-webkit-appearance:none}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:var(--green)}
+.form-group textarea{resize:vertical;min-height:90px}
+.genre-select{display:flex;flex-wrap:wrap;gap:6px}
+.genre-chip{font-size:13px;padding:5px 12px;border:0.5px solid var(--border);border-radius:20px;cursor:pointer;background:transparent;color:var(--text2);font-family:inherit}
+.genre-chip.sel{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-row{display:flex;gap:8px;margin-top:16px}
+.btn-primary{flex:1;padding:13px;background:var(--text);border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;color:var(--bg);font-family:inherit}
+.btn-cancel{padding:13px 18px;background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:15px;cursor:pointer;color:var(--text2);font-family:inherit}
+.section-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;margin-top:18px;text-transform:uppercase;letter-spacing:0.5px}
+
+/* 詳細モーダル */
+.detail-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.detail-title{font-size:20px;font-weight:700;letter-spacing:-0.5px;color:var(--text)}
+.close-btn{padding:6px 14px;background:var(--bg2);border:0.5px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;color:var(--text2);font-family:inherit;flex-shrink:0;margin-left:10px}
+.star-input{display:flex;gap:4px}
+.star-input span{font-size:28px;cursor:pointer;color:var(--border2)}
+.star-input span.on{color:#EF9F27}
+.ing-box{background:var(--bg2);border-radius:var(--radius-sm);padding:12px 14px;font-size:14px;line-height:1.8;color:var(--text);white-space:pre-wrap;margin-bottom:12px}
+.steps-box{font-size:14px;line-height:1.9;color:var(--text);white-space:pre-wrap;margin-bottom:16px}
+.cook-btn{width:100%;padding:13px;background:var(--green);border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:600;cursor:pointer;color:#fff;font-family:inherit;margin-bottom:10px}
+.delete-btn{width:100%;padding:12px;background:transparent;border:0.5px solid var(--border);border-radius:var(--radius-sm);font-size:14px;cursor:pointer;color:var(--text2);font-family:inherit}
+
+/* 材料検索 */
+.search-input{width:100%;padding:11px 14px;border:0.5px solid var(--border2);border-radius:var(--radius-sm);font-size:15px;background:#fff;color:var(--text);font-family:inherit;-webkit-appearance:none;margin-bottom:14px}
+.search-input:focus{outline:none;border-color:var(--green)}
+.hit-card{background:#fff;border:0.5px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px}
+.hit-card-title{font-size:14px;font-weight:600;margin-bottom:6px}
+.hit-ing-match{background:#EAF3DE;color:#3B6D11;border-radius:4px;padding:0 4px}
+
+/* 買い物 */
+.toggle-wrap{display:flex;background:var(--bg2);border-radius:var(--radius-sm);padding:3px;margin-bottom:16px}
+.toggle-btn{flex:1;padding:8px 4px;border:none;background:transparent;border-radius:7px;font-size:13px;color:var(--text2);cursor:pointer;font-family:inherit;font-weight:500}
+.toggle-btn.active{background:#fff;color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.recipe-sel-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:0.5px solid var(--border)}
+.recipe-sel-row:last-child{border:none}
+.recipe-sel-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--green);flex-shrink:0}
+.recipe-sel-row label{font-size:15px;color:var(--text);flex:1}
+.cart-item{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:0.5px solid var(--border)}
+.cart-item:last-child{border:none}
+.cart-check{width:20px;height:20px;accent-color:var(--green);margin-top:1px;flex-shrink:0}
+.cart-label{flex:1;color:var(--text);font-size:15px}
+.cart-label.done{text-decoration:line-through;color:var(--text2)}
+.cart-from{font-size:11px;color:var(--text2);margin-top:1px}
+
+/* 材料チップ */
+.ing-chip-wrap{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.ing-chip{font-size:13px;padding:7px 15px;border:1.5px solid var(--border2);border-radius:20px;background:#fff;color:var(--text2);cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-family:inherit;-webkit-user-select:none;user-select:none}
+.ing-chip .ck{display:none;font-size:12px;font-weight:700}
+.ing-chip.sel{background:var(--green);border-color:var(--green);color:#fff;font-weight:600}
+.ing-chip.sel .ck{display:inline}
+.chip-divider{width:100%;border:none;border-top:1.5px dashed var(--border);margin:2px 0 4px}
+
+.hit-recipe-card{background:#fff;border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+.hit-recipe-title{font-size:16px;font-weight:600;margin-bottom:8px;letter-spacing:-0.3px}
+.match-ing{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px}
+.match-tag{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--green-bg);color:var(--green-text);font-weight:500}
+.missing-tag{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg2);color:var(--text2)}
+.match-label{font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500}
+.empty{text-align:center;padding:3rem 1rem;color:var(--text2);font-size:14px;line-height:2}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ヘッダー（各タブで切り替え） -->
+  <div class="header">
+    <h1 id="header-title">🍽 レシピ</h1>
+    <button class="header-btn" id="header-action">＋ 追加</button>
+  </div>
+
+  <!-- レシピタブ -->
+  <div class="screen active" id="screen-recipes">
+    <div class="filter-scroll" id="genre-filters">
+      <button class="filter-btn active">すべて</button>
+      <button class="filter-btn">和食</button>
+      <button class="filter-btn">洋食</button>
+      <button class="filter-btn">中華</button>
+      <button class="filter-btn">さっぱり</button>
+      <button class="filter-btn">こってり</button>
+      <button class="filter-btn">サラダ</button>
+      <button class="filter-btn">ドリンク</button>
+      <button class="filter-btn">来客用</button>
+    </div>
+    <div class="sort-row">
+      <label>並び替え</label>
+      <select id="sort-select">
+        <option value="new">新着順</option>
+        <option value="count">調理回数</option>
+        <option value="rate">評価</option>
+      </select>
+    </div>
+    <div id="recipe-list"></div>
+  </div>
+
+  <!-- 材料検索タブ -->
+  <div class="screen" id="screen-search">
+    <input class="search-input" placeholder="材料名で検索（例：鶏もも、豆腐）" id="mat-input" />
+    <div id="mat-results"></div>
+  </div>
+
+  <!-- 買い物タブ -->
+  <div class="screen" id="screen-cart">
+    <div class="toggle-wrap">
+      <button class="toggle-btn active" id="cart-toggle-recipe">レシピ→材料</button>
+      <button class="toggle-btn" id="cart-toggle-ing">材料→レシピ</button>
+    </div>
+    <div id="cart-mode-recipe">
+      <p class="section-title" style="margin-top:0">レシピを選択</p>
+      <div id="cart-recipe-sel"></div>
+      <p class="section-title" id="cart-ing-title" style="display:none">まとめ買いリスト</p>
+      <div id="cart-list"></div>
+    </div>
+    <div id="cart-mode-ing" style="display:none">
+      <p class="section-title" style="margin-top:0">買う材料にチェック</p>
+      <div class="ing-chip-wrap" id="ing-chips"></div>
+      <div id="ing-hit-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ボトムナビ -->
+<nav class="nav">
+  <button id="tab-recipes" class="active"><span class="icon">📖</span>レシピ</button>
+  <button id="tab-search"><span class="icon">🔍</span>材料検索</button>
+  <button id="tab-cart"><span class="icon">🛒</span>買い物</button>
+</nav>
+
+<!-- レシピ追加モーダル -->
+<div class="modal-bg" id="add-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>レシピを追加</h2>
+    <div class="form-group"><label>料理名</label><input id="f-name" placeholder="例：豚の生姜焼き" /></div>
+    <div class="form-group"><label>材料（1行1つ）</label><textarea id="f-ing" placeholder="鶏もも肉 300g&#10;醤油 大さじ2&#10;みりん 大さじ1"></textarea></div>
+    <div class="form-group"><label>作り方</label><textarea id="f-step" placeholder="作り方を書いてください"></textarea></div>
+    <div class="form-group">
+      <label>ジャンル（複数可）</label>
+      <div class="genre-select" id="genre-chips">
+        <button class="genre-chip">和食</button><button class="genre-chip">洋食</button>
+        <button class="genre-chip">中華</button><button class="genre-chip">さっぱり</button>
+        <button class="genre-chip">こってり</button><button class="genre-chip">サラダ</button>
+        <button class="genre-chip">ドリンク</button><button class="genre-chip">来客用</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-cancel" id="add-cancel">キャンセル</button>
+      <button class="btn-primary" id="add-save">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- レシピ詳細モーダル -->
+<div class="modal-bg" id="detail-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="detail-content"></div>
+    <button class="delete-btn" id="delete-btn">このレシピを削除</button>
+  </div>
+</div>
+
+<script>
+(function(){
+const STORAGE_KEY='献立app_v1';
+let recipes=[];
+let filterGenre=null;
+let sortBy='new';
+let selectedIngs=new Set();
+let currentTab='recipes';
+
+function load(){
+  try{const d=localStorage.getItem(STORAGE_KEY);if(d)recipes=JSON.parse(d);}catch(e){}
+  if(!recipes.length){
+    recipes=[
+      {id:1,name:'豚の生姜焼き',ingredients:'豚薄切り肉 200g\n醤油 大さじ2\nみりん 大さじ2\n生姜 1片\nサラダ油 適量',steps:'1. 豚肉にタレを揉み込む\n2. フライパンで炒めて絡める',genres:['和食','こってり'],rating:4,count:7,date:Date.now()-800000},
+      {id:2,name:'鶏むね肉のレモン蒸し',ingredients:'鶏むね肉 1枚\nレモン 半分\n塩 小さじ1\nオリーブオイル 大さじ1\n醤油 少々',steps:'1. 薄切りにして塩・オイル・レモン汁をかけ置く\n2. 600W3分加熱',genres:['洋食','さっぱり'],rating:3,count:4,date:Date.now()-500000},
+      {id:3,name:'麻婆豆腐',ingredients:'豆腐 1丁\n豚ひき肉 150g\n豆板醤 小さじ1\n醤油 大さじ1\n鶏がらスープ 200ml\nにんにく 1片\n生姜 1片',steps:'1. 豆腐を角切りに\n2. ひき肉・豆板醤を炒める\n3. スープ・醤油・豆腐を加え煮込む',genres:['中華','こってり'],rating:5,count:12,date:Date.now()-200000},
+    ];
+    save();
+  }
+}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(recipes));}catch(e){}}
+function stars(n){return[1,2,3,4,5].map(i=>`<span class="${i<=n?'':'star-empty'}">★</span>`).join('')}
+
+function renderList(){
+  let list=[...recipes];
+  if(filterGenre)list=list.filter(r=>r.genres&&r.genres.includes(filterGenre));
+  if(sortBy==='count')list.sort((a,b)=>b.count-a.count);
+  else if(sortBy==='rate')list.sort((a,b)=>b.rating-a.rating);
+  else list.sort((a,b)=>b.date-a.date);
+  const el=document.getElementById('recipe-list');
+  if(!list.length){el.innerHTML='<div class="empty">📭<br>レシピがありません<br>＋ボタンで追加してください</div>';return;}
+  el.innerHTML=list.map(r=>{
+    const idx=recipes.indexOf(r);
+    return `<div class="card" data-idx="${idx}">
+      <div class="card-title">${r.name}</div>
+      <div class="card-meta">${r.genres.map(g=>`<span class="badge genre-${g}">${g}</span>`).join('')}<span class="count-badge">🍳 ${r.count}回</span></div>
+      <div class="stars">${stars(r.rating)}</div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.card').forEach(c=>c.addEventListener('click',()=>openDetail(+c.dataset.idx)));
+}
+
+// タブ切り替え
+function updateHeader(){
+  const titles={recipes:'🍽 レシピ',search:'🔍 材料検索',cart:'🛒 買い物'};
+  document.getElementById('header-title').textContent=titles[currentTab];
+  document.getElementById('header-action').style.display=currentTab==='recipes'?'':'none';
+}
+
+function switchTab(tab){
+  currentTab=tab;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  updateHeader();
+  if(tab==='cart'){renderCartRecipeSel();renderIngChips();}
+}
+
+document.getElementById('tab-recipes').addEventListener('click',()=>switchTab('recipes'));
+document.getElementById('tab-search').addEventListener('click',()=>switchTab('search'));
+document.getElementById('tab-cart').addEventListener('click',()=>switchTab('cart'));
+
+// ジャンルフィルター
+document.getElementById('genre-filters').addEventListener('click',e=>{
+  const btn=e.target.closest('.filter-btn');
+  if(!btn)return;
+  document.querySelectorAll('#genre-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const txt=btn.textContent.trim();
+  filterGenre=txt==='すべて'?null:txt;
+  renderList();
+});
+
+document.getElementById('sort-select').addEventListener('change',e=>{sortBy=e.target.value;renderList();});
+document.getElementById('header-action').addEventListener('click',openAdd);
+
+// 買い物トグル
+document.getElementById('cart-toggle-recipe').addEventListener('click',()=>switchCart('recipe'));
+document.getElementById('cart-toggle-ing').addEventListener('click',()=>switchCart('ing'));
+function switchCart(mode){
+  document.getElementById('cart-toggle-recipe').classList.toggle('active',mode==='recipe');
+  document.getElementById('cart-toggle-ing').classList.toggle('active',mode==='ing');
+  document.getElementById('cart-mode-recipe').style.display=mode==='recipe'?'block':'none';
+  document.getElementById('cart-mode-ing').style.display=mode==='ing'?'block':'none';
+}
+
+// 材料検索
+document.getElementById('mat-input').addEventListener('input',searchMat);
+function searchMat(){
+  const q=document.getElementById('mat-input').value.trim();
+  const el=document.getElementById('mat-results');
+  if(!q){el.innerHTML='';return;}
+  const hits=recipes.filter(r=>r.ingredients&&r.ingredients.toLowerCase().includes(q.toLowerCase()));
+  if(!hits.length){el.innerHTML='<div class="empty">ヒットなし</div>';return;}
+  el.innerHTML=hits.map(r=>`
+    <div class="hit-card">
+      <div class="hit-card-title">${r.name} ${r.genres.map(g=>`<span class="badge genre-${g}">${g}</span>`).join('')}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8">${r.ingredients.split('\n').map(l=>l.toLowerCase().includes(q.toLowerCase())?`<span class="hit-ing-match">${l}</span>`:l).join('<br>')}</div>
+    </div>`).join('');
+}
+
+// レシピ→材料
+function renderCartRecipeSel(){
+  document.getElementById('cart-recipe-sel').innerHTML=recipes.map((r,i)=>`
+    <div class="recipe-sel-row">
+      <input type="checkbox" id="csel-${i}" />
+      <label for="csel-${i}">${r.name}</label>
+    </div>`).join('');
+  document.querySelectorAll('[id^=csel-]').forEach(cb=>cb.addEventListener('change',buildCartList));
+  buildCartList();
+}
+function buildCartList(){
+  const checked=recipes.filter((_,i)=>{const c=document.getElementById('csel-'+i);return c&&c.checked;});
+  const el=document.getElementById('cart-list');
+  const title=document.getElementById('cart-ing-title');
+  if(!checked.length){el.innerHTML='';title.style.display='none';return;}
+  const merged={};
+  checked.forEach(r=>{r.ingredients.split('\n').filter(l=>l.trim()).forEach(l=>{const k=l.trim();if(!merged[k])merged[k]=[];merged[k].push(r.name);});});
+  title.style.display='block';
+  el.innerHTML=Object.entries(merged).map(([text,rs])=>`
+    <div class="cart-item">
+      <input type="checkbox" class="cart-check" />
+      <div><div class="cart-label">${text}</div><div class="cart-from">${rs.join('・')}</div></div>
+    </div>`).join('');
+  el.querySelectorAll('.cart-check').forEach(cb=>cb.addEventListener('change',function(){
+    this.nextElementSibling.querySelector('.cart-label').classList.toggle('done',this.checked);
+  }));
+}
+
+// 材料→レシピ
+function getAllIngredients(){
+  const set=new Set();
+  recipes.forEach(r=>r.ingredients.split('\n').filter(l=>l.trim()).forEach(l=>{const n=l.trim().split(/[\s　]/)[0];if(n)set.add(n);}));
+  return[...set].sort();
+}
+function renderIngChips(){
+  const all=getAllIngredients();
+  const el=document.getElementById('ing-chips');
+  if(!all.length){el.innerHTML='<span style="font-size:13px;color:var(--text2)">レシピを登録すると材料が表示されます</span>';return;}
+  const sel=all.filter(i=>selectedIngs.has(i));
+  const unsel=all.filter(i=>!selectedIngs.has(i));
+  let html=sel.map(ing=>`<button class="ing-chip sel" data-ing="${ing}"><span class="ck">✓</span>${ing}</button>`).join('');
+  if(sel.length&&unsel.length)html+=`<hr class="chip-divider">`;
+  html+=unsel.map(ing=>`<button class="ing-chip" data-ing="${ing}"><span class="ck">✓</span>${ing}</button>`).join('');
+  el.innerHTML=html;
+  el.querySelectorAll('.ing-chip').forEach(btn=>btn.addEventListener('click',function(){
+    const ing=this.dataset.ing;
+    if(selectedIngs.has(ing))selectedIngs.delete(ing);
+    else selectedIngs.add(ing);
+    renderIngChips();renderIngHits();
+  }));
+  if(!selectedIngs.size)document.getElementById('ing-hit-results').innerHTML='<div class="empty">材料を選ぶとレシピがヒットします</div>';
+}
+function renderIngHits(){
+  const selected=[...selectedIngs];
+  const el=document.getElementById('ing-hit-results');
+  if(!selected.length){el.innerHTML='<div class="empty">材料を選ぶとレシピがヒットします</div>';return;}
+  const results=recipes.map(r=>{
+    const rIngs=r.ingredients.split('\n').filter(l=>l.trim()).map(l=>l.trim().split(/[\s　]/)[0]);
+    const matched=selected.filter(s=>rIngs.some(ri=>ri.includes(s)||s.includes(ri)));
+    const missing=rIngs.filter(ri=>!selected.some(s=>ri.includes(s)||s.includes(ri)));
+    return{r,matched,missing};
+  }).filter(x=>x.matched.length).sort((a,b)=>b.matched.length-a.matched.length);
+  if(!results.length){el.innerHTML='<div class="empty">ヒットなし</div>';return;}
+  el.innerHTML=results.map(({r,matched,missing})=>`
+    <div class="hit-recipe-card">
+      <div class="hit-recipe-title">${r.name}</div>
+      <div class="card-meta">${r.genres.map(g=>`<span class="badge genre-${g}">${g}</span>`).join('')}<span class="count-badge">🍳 ${r.count}回</span></div>
+      <div class="match-label">✓ チェックした材料</div>
+      <div class="match-ing">${matched.map(m=>`<span class="match-tag">${m}</span>`).join('')}</div>
+      ${missing.length?`<div class="match-label" style="margin-top:6px">あと必要な材料</div><div class="match-ing">${missing.slice(0,5).map(m=>`<span class="missing-tag">${m}</span>`).join('')}${missing.length>5?`<span class="missing-tag">他${missing.length-5}点</span>`:''}</div>`:''}
+    </div>`).join('');
+}
+
+// 追加モーダル
+function openAdd(){
+  document.getElementById('f-name').value='';
+  document.getElementById('f-ing').value='';
+  document.getElementById('f-step').value='';
+  document.querySelectorAll('#genre-chips .genre-chip').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('add-modal').classList.add('open');
+}
+document.getElementById('add-cancel').addEventListener('click',()=>document.getElementById('add-modal').classList.remove('open'));
+document.querySelectorAll('#genre-chips .genre-chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('sel')));
+document.getElementById('add-save').addEventListener('click',()=>{
+  const name=document.getElementById('f-name').value.trim();
+  if(!name)return;
+  const genres=[...document.querySelectorAll('#genre-chips .genre-chip.sel')].map(c=>c.textContent);
+  recipes.push({id:Date.now(),name,ingredients:document.getElementById('f-ing').value.trim(),steps:document.getElementById('f-step').value.trim(),genres,rating:0,count:0,date:Date.now()});
+  save();document.getElementById('add-modal').classList.remove('open');renderList();
+});
+
+// 詳細モーダル
+function openDetail(idx){
+  const r=recipes[idx];
+  const wrap=document.createElement('div');
+  wrap.innerHTML=`
+    <div class="detail-top">
+      <div class="detail-title">${r.name}</div>
+      <button class="close-btn" id="detail-close">閉じる</button>
+    </div>
+    <div class="card-meta">${r.genres.map(g=>`<span class="badge genre-${g}">${g}</span>`).join('')}<span class="count-badge">🍳 ${r.count}回</span></div>
+    <p class="section-title" style="margin-top:14px">評価</p>
+    <div class="star-input">${[1,2,3,4,5].map(i=>`<span class="${i<=r.rating?'on':''}" data-v="${i}">★</span>`).join('')}</div>
+    <p class="section-title" style="margin-top:16px">材料</p>
+    <div class="ing-box">${r.ingredients||'（未入力）'}</div>
+    <p class="section-title">作り方</p>
+    <div class="steps-box">${r.steps||'（未入力）'}</div>
+    <button class="cook-btn" id="cook-btn">✓ 今日作った！（+1回）</button>
+  `;
+  document.getElementById('detail-content').innerHTML='';
+  document.getElementById('detail-content').appendChild(wrap);
+  wrap.querySelector('#detail-close').addEventListener('click',()=>document.getElementById('detail-modal').classList.remove('open'));
+  wrap.querySelector('#cook-btn').addEventListener('click',()=>{
+    recipes[idx].count++;save();
+    wrap.querySelector('.count-badge').textContent=`🍳 ${recipes[idx].count}回`;
+    renderList();
+  });
+  wrap.querySelectorAll('.star-input span').forEach(s=>s.addEventListener('click',()=>{
+    const v=+s.dataset.v;recipes[idx].rating=v;save();
+    wrap.querySelectorAll('.star-input span').forEach((ss,i)=>ss.classList.toggle('on',i<v));
+    renderList();
+  }));
+  document.getElementById('delete-btn').onclick=()=>{
+    if(!confirm(`「${recipes[idx].name}」を削除しますか？`))return;
+    recipes.splice(idx,1);save();
+    document.getElementById('detail-modal').classList.remove('open');
+    renderList();
+  };
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+load();renderList();updateHeader();
+})();
+</script>
+</body>
+</html>
