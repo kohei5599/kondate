@@ -246,6 +246,7 @@ body{background:var(--bg);color:var(--text);font-family:'Hiragino Sans','Hiragin
 <script>
 (function(){
 const STORAGE_KEY='献立app_v1';
+const EXTRA_KEY='献立app_extra_v1';
 let recipes=[];
 let filterGenre=null;
 let sortBy='new';
@@ -255,6 +256,7 @@ let currentTab='recipes';
 
 function load(){
   try{const d=localStorage.getItem(STORAGE_KEY);if(d)recipes=JSON.parse(d);}catch(e){}
+  try{const e2=localStorage.getItem(EXTRA_KEY);if(e2)extraIngs=JSON.parse(e2);}catch(e){}
   if(!recipes.length){
     recipes=[
       {id:1,name:'豚の生姜焼き',ingredients:'豚薄切り肉 200g\n醤油 大さじ2\nみりん 大さじ2\n生姜 1片\nサラダ油 適量',steps:'1. 豚肉にタレを揉み込む\n2. フライパンで炒めて絡める',genres:['和食','こってり'],rating:4,count:7,date:Date.now()-800000},
@@ -265,6 +267,7 @@ function load(){
   }
 }
 function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(recipes));}catch(e){}}
+function saveExtra(){try{localStorage.setItem(EXTRA_KEY,JSON.stringify(extraIngs));}catch(e){}}
 function stars(n){return[1,2,3,4,5].map(i=>`<span class="${i<=n?'':'star-empty'}">★</span>`).join('')}
 
 function renderList(){
@@ -406,6 +409,7 @@ function renderIngChips(){
     e.stopPropagation();
     const ing=this.dataset.ing;
     extraIngs=extraIngs.filter(i=>i!==ing);
+    saveExtra();
     selectedIngs.delete(ing);
     renderIngChips();renderIngHits();
   }));
@@ -418,6 +422,7 @@ function setupIngAdd(){
     const v=input.value.trim();
     if(!v)return;
     if(!extraIngs.includes(v)&&!getAllIngredients().includes(v))extraIngs.push(v);
+    saveExtra();
     selectedIngs.add(v);
     input.value='';
     renderIngChips();renderIngHits();
