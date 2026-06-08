@@ -151,17 +151,7 @@ body{background:var(--bg);color:var(--text);font-family:'Hiragino Sans','Hiragin
 
   <!-- レシピタブ -->
   <div class="screen active" id="screen-recipes">
-    <div class="filter-scroll" id="genre-filters">
-      <button class="filter-btn active">すべて</button>
-      <button class="filter-btn">和食</button>
-      <button class="filter-btn">洋食</button>
-      <button class="filter-btn">中華</button>
-      <button class="filter-btn">さっぱり</button>
-      <button class="filter-btn">こってり</button>
-      <button class="filter-btn">サラダ</button>
-      <button class="filter-btn">ドリンク</button>
-      <button class="filter-btn">来客用</button>
-    </div>
+    <div class="filter-scroll" id="genre-filters"></div>
     <div class="sort-row">
       <label>並び替え</label>
       <select id="sort-select">
@@ -220,12 +210,7 @@ body{background:var(--bg);color:var(--text);font-family:'Hiragino Sans','Hiragin
     <div class="form-group"><label>作り方</label><textarea id="f-step" placeholder="作り方を書いてください"></textarea></div>
     <div class="form-group">
       <label>ジャンル（複数可）</label>
-      <div class="genre-select" id="genre-chips">
-        <button class="genre-chip">和食</button><button class="genre-chip">洋食</button>
-        <button class="genre-chip">中華</button><button class="genre-chip">さっぱり</button>
-        <button class="genre-chip">こってり</button><button class="genre-chip">サラダ</button>
-        <button class="genre-chip">ドリンク</button><button class="genre-chip">来客用</button>
-      </div>
+      <div class="genre-select" id="genre-chips"></div>
     </div>
     <div class="btn-row">
       <button class="btn-cancel" id="add-cancel">キャンセル</button>
@@ -247,16 +232,22 @@ body{background:var(--bg);color:var(--text);font-family:'Hiragino Sans','Hiragin
 (function(){
 const STORAGE_KEY='献立app_v1';
 const EXTRA_KEY='献立app_extra_v1';
+const GENRE_KEY='献立app_genres_v1';
 let recipes=[];
 let filterGenre=null;
 let sortBy='new';
 let selectedIngs=new Set();
 let extraIngs=[];
 let currentTab='recipes';
+const DEFAULT_GENRES=['和食','洋食','中華','さっぱり','こってり','サラダ','ドリンク','来客用'];
+let customGenres=[];
+
+function allGenres(){return [...DEFAULT_GENRES,...customGenres];}
 
 function load(){
   try{const d=localStorage.getItem(STORAGE_KEY);if(d)recipes=JSON.parse(d);}catch(e){}
   try{const e2=localStorage.getItem(EXTRA_KEY);if(e2)extraIngs=JSON.parse(e2);}catch(e){}
+  try{const g=localStorage.getItem(GENRE_KEY);if(g)customGenres=JSON.parse(g);}catch(e){}
   if(!recipes.length){
     recipes=[
       {id:1,name:'豚の生姜焼き',ingredients:'豚薄切り肉 200g\n醤油 大さじ2\nみりん 大さじ2\n生姜 1片\nサラダ油 適量',steps:'1. 豚肉にタレを揉み込む\n2. フライパンで炒めて絡める',genres:['和食','こってり'],rating:4,count:7,date:Date.now()-800000},
@@ -268,6 +259,7 @@ function load(){
 }
 function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(recipes));}catch(e){}}
 function saveExtra(){try{localStorage.setItem(EXTRA_KEY,JSON.stringify(extraIngs));}catch(e){}}
+function saveGenres(){try{localStorage.setItem(GENRE_KEY,JSON.stringify(customGenres));}catch(e){}}
 function stars(n){return[1,2,3,4,5].map(i=>`<span class="${i<=n?'':'star-empty'}">★</span>`).join('')}
 
 function renderList(){
@@ -287,6 +279,35 @@ function renderList(){
     </div>`;
   }).join('');
   el.querySelectorAll('.card').forEach(c=>c.addEventListener('click',()=>openDetail(+c.dataset.idx)));
+}
+
+// フィルターボタン描画
+function renderGenreFilters(){
+  const el=document.getElementById('genre-filters');
+  el.innerHTML=['すべて',...allGenres()].map(g=>`<button class="filter-btn${filterGenre===g||(!filterGenre&&g==='すべて')?' active':''}">${g}</button>`).join('');
+  el.querySelectorAll('.filter-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    filterGenre=btn.textContent==='すべて'?null:btn.textContent;
+    renderGenreFilters();renderList();
+  }));
+}
+
+// ジャンルチップ描画（追加モーダル内）
+function renderGenreChips(selectedGenres=[]){
+  const el=document.getElementById('genre-chips');
+  el.innerHTML=allGenres().map(g=>`<button class="genre-chip${selectedGenres.includes(g)?' sel':''}" data-g="${g}">${g}</button>`).join('')
+    +`<button class="genre-chip" id="genre-add-btn" style="border-style:dashed;color:var(--text2)">＋ 追加</button>`;
+  el.querySelectorAll('.genre-chip[data-g]').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('sel')));
+  el.querySelector('#genre-add-btn').addEventListener('click',()=>{
+    const name=prompt('新しいカテゴリ名を入力してください');
+    if(!name||!name.trim())return;
+    const trimmed=name.trim();
+    if(allGenres().includes(trimmed)){alert('そのカテゴリはすでにあります');return;}
+    customGenres.push(trimmed);
+    saveGenres();
+    const selNow=[...el.querySelectorAll('.genre-chip.sel[data-g]')].map(c=>c.dataset.g);
+    renderGenreChips([...selNow,trimmed]);
+    renderGenreFilters();
+  });
 }
 
 // タブ切り替え
@@ -309,17 +330,6 @@ function switchTab(tab){
 document.getElementById('tab-recipes').addEventListener('click',()=>switchTab('recipes'));
 document.getElementById('tab-search').addEventListener('click',()=>switchTab('search'));
 document.getElementById('tab-cart').addEventListener('click',()=>switchTab('cart'));
-
-// ジャンルフィルター
-document.getElementById('genre-filters').addEventListener('click',e=>{
-  const btn=e.target.closest('.filter-btn');
-  if(!btn)return;
-  document.querySelectorAll('#genre-filters .filter-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  const txt=btn.textContent.trim();
-  filterGenre=txt==='すべて'?null:txt;
-  renderList();
-});
 
 document.getElementById('sort-select').addEventListener('change',e=>{sortBy=e.target.value;renderList();});
 document.getElementById('header-action').addEventListener('click',openAdd);
@@ -456,9 +466,9 @@ function openAdd(){
   document.getElementById('f-name').value='';
   document.getElementById('f-ing').value='';
   document.getElementById('f-step').value='';
-  document.querySelectorAll('#genre-chips .genre-chip').forEach(c=>c.classList.remove('sel'));
   document.getElementById('add-modal-title').textContent='レシピを追加';
   document.getElementById('add-save').textContent='保存';
+  renderGenreChips([]);
   document.getElementById('add-modal').classList.add('open');
 }
 document.getElementById('add-cancel').addEventListener('click',()=>{
@@ -466,11 +476,10 @@ document.getElementById('add-cancel').addEventListener('click',()=>{
   document.getElementById('add-modal-title').textContent='レシピを追加';
   document.getElementById('add-save').textContent='保存';
 });
-document.querySelectorAll('#genre-chips .genre-chip').forEach(c=>c.addEventListener('click',()=>c.classList.toggle('sel')));
 document.getElementById('add-save').addEventListener('click',()=>{
   const name=document.getElementById('f-name').value.trim();
   if(!name)return;
-  const genres=[...document.querySelectorAll('#genre-chips .genre-chip.sel')].map(c=>c.textContent);
+  const genres=[...document.querySelectorAll('#genre-chips .genre-chip.sel[data-g]')].map(c=>c.dataset.g);
   recipes.push({id:Date.now(),name,ingredients:document.getElementById('f-ing').value.trim(),steps:document.getElementById('f-step').value.trim(),genres,rating:0,count:0,date:Date.now()});
   save();document.getElementById('add-modal').classList.remove('open');renderList();
 });
@@ -529,40 +538,36 @@ function openEdit(idx){
   document.getElementById('f-name').value=r.name;
   document.getElementById('f-ing').value=r.ingredients;
   document.getElementById('f-step').value=r.steps;
-  document.querySelectorAll('#genre-chips .genre-chip').forEach(c=>{
-    c.classList.toggle('sel',r.genres.includes(c.textContent));
-  });
   document.getElementById('add-modal-title').textContent='レシピを編集';
   document.getElementById('add-save').textContent='更新';
+  renderGenreChips(r.genres||[]);
   document.getElementById('add-modal').classList.add('open');
-  // 保存ボタンを編集モードに切り替え
   const saveBtn=document.getElementById('add-save');
   const newBtn=saveBtn.cloneNode(true);
   saveBtn.parentNode.replaceChild(newBtn,saveBtn);
   newBtn.addEventListener('click',()=>{
     const name=document.getElementById('f-name').value.trim();
     if(!name)return;
-    const genres=[...document.querySelectorAll('#genre-chips .genre-chip.sel')].map(c=>c.textContent);
+    const genres=[...document.querySelectorAll('#genre-chips .genre-chip.sel[data-g]')].map(c=>c.dataset.g);
     recipes[idx]={...recipes[idx],name,ingredients:document.getElementById('f-ing').value.trim(),steps:document.getElementById('f-step').value.trim(),genres};
     save();
     document.getElementById('add-modal').classList.remove('open');
     document.getElementById('add-modal-title').textContent='レシピを追加';
     newBtn.textContent='保存';
     renderList();
-    // 保存ボタンを元に戻す
     const origBtn=newBtn.cloneNode(true);
     newBtn.parentNode.replaceChild(origBtn,newBtn);
     origBtn.addEventListener('click',()=>{
       const n=document.getElementById('f-name').value.trim();
       if(!n)return;
-      const g=[...document.querySelectorAll('#genre-chips .genre-chip.sel')].map(c=>c.textContent);
+      const g=[...document.querySelectorAll('#genre-chips .genre-chip.sel[data-g]')].map(c=>c.dataset.g);
       recipes.push({id:Date.now(),name:n,ingredients:document.getElementById('f-ing').value.trim(),steps:document.getElementById('f-step').value.trim(),genres:g,rating:0,count:0,date:Date.now()});
       save();document.getElementById('add-modal').classList.remove('open');renderList();
     });
   });
 }
 
-load();renderList();updateHeader();setupIngAdd();
+load();renderGenreFilters();renderList();updateHeader();setupIngAdd();
 })();
 </script>
 </body>
